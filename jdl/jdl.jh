@@ -1,0 +1,131 @@
+entity Collection {
+ 	id Long
+    name String required
+    description String
+    price Double required
+    image ImageBlob
+}
+
+entity Category {
+	id Long
+    name String required unique
+}
+
+entity Cart {
+	id Long
+    totalPriceWithoutDiscount Double
+    cardDiscount Double
+    bonusDiscount Double
+    finalPrice Double
+}
+
+entity Colour {
+	id Long
+    name String required unique
+}
+
+entity Flower {
+	id Long
+    name String required unique
+    description String
+    price Double required
+    image ImageBlob
+}
+
+entity Order {
+ 	id Long
+    totalPrice Double
+    date Instant
+}
+
+entity Delivery {
+ 	id Long
+    address String required
+    postOfficeNumber Integer
+    price Double
+    type DeliveryType
+}
+
+enum DeliveryType {
+ 	POST_OFFICE, COURIER, SELF_PICK_UP
+}
+
+entity ClientCard {
+	id Long
+    name String required
+    description String
+    type CardType
+    bonusAmount Double
+    percentage Double
+}
+
+enum CardType {
+ 	BONUS, SOCIAL, GOLD
+}
+
+entity Packing {
+ 	id Long
+    name String required
+    material String
+    price Double required
+}
+
+entity FlowerInOrder {
+	id Long
+    amount Integer
+}
+
+entity CollectionInOrder {
+	id Long
+    amount Integer
+}
+
+entity FlowerInCart {
+	id Long
+    amount Integer
+}
+
+entity CollectionInCart {
+	id Long
+    amount Integer
+}
+
+relationship OneToOne {
+	Cart{user} to User with jpaDerivedIdentifier
+    ClientCard{user} to User with jpaDerivedIdentifier
+    Delivery{order} to Order{delivery} with jpaDerivedIdentifier
+}
+
+relationship OneToMany {
+ 	Category{collections} to Collection{category}
+ 	Order{collectionDetails} to CollectionInOrder{order}
+ 	Order{flowerDetails} to FlowerInOrder{order}
+ 	Cart{collectionDetails} to CollectionInCart{cart}
+    Cart{flowerDetails} to FlowerInCart{cart}
+}
+
+relationship ManyToOne {
+ 	Order{user} to User
+    Delivery{user} to User
+    Order{packing} to Packing
+    CollectionInOrder{collection} to Collection
+    CollectionInOrder{packing} to Packing
+    FlowerInOrder{colour} to Colour
+    FlowerInOrder{flower} to Flower
+    CollectionInCart{collection} to Collection
+    CollectionInCart{packing} to Packing
+    FlowerInCart{colour} to Colour
+    FlowerInCart{flower} to Flower
+}
+
+relationship ManyToMany {
+	Collection{availablePackings} to Packing{collections}
+    Collection{flowers} to Flower{collectionsIn}
+    Flower{availableColours} to Colour{flowers}
+}
+
+filter Flower, Collection, Packing
+search Flower, Collection with elasticsearch
+paginate Flower, Collection, Packing with infinite-scroll
+paginate Order, Delivery with pagination
+service all with serviceImpl
