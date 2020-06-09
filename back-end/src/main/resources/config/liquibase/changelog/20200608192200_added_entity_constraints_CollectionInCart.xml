@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!--
+        Added the constraints for entity CollectionInCart.
+    -->
+    <changeSet id="20200608192200-2" author="jhipster">
+        
+        <addForeignKeyConstraint baseColumnNames="collection_id"
+                                 baseTableName="collection_in_cart"
+                                 constraintName="fk_collection_in_cart_collection_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="collection"/>
+
+        <addForeignKeyConstraint baseColumnNames="packing_id"
+                                 baseTableName="collection_in_cart"
+                                 constraintName="fk_collection_in_cart_packing_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="packing"/>
+
+        <addForeignKeyConstraint baseColumnNames="cart_id"
+                                 baseTableName="collection_in_cart"
+                                 constraintName="fk_collection_in_cart_cart_id"
+                                 referencedColumnNames="id"
+                                 referencedTableName="cart"/>
+
+    </changeSet>
+</databaseChangeLog>
