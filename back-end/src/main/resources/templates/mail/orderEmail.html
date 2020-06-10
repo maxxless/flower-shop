@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${#locale.language}" lang="en">
+    <head>
+        <title th:text="#{order.completed.title}">Order completed!</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <link rel="shortcut icon" th:href="@{|${baseUrl}/favicon.ico|}" />
+    </head>
+    <body>
+        <p th:text="#{order.completed.greeting(${user.login})}">
+            Dear
+        </p>
+        <p th:text="#{order.completed.text1}">
+            Blablabla
+        </p>
+        <p th:text="#{order.completed.details(${order.id}, ${order.totalPrice}, ${delivery.postOfficeNumber}, ${delivery.address}, ${delivery.price})}">
+            details
+        </p>
+        <p>
+            <span th:text="#{order.completed.text2}">Regards, </span>
+            <br/>
+            <em th:text="#{order.signature}">JHipster.</em>
+        </p>
+    </body>
+</html>
