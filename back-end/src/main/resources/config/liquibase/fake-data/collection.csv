@@ -1,0 +1,11 @@
+id;name;description;price;image;image_content_type;category_id
+1;Колючі троянди;Прекрасний вибір для нареченого;1000;../fake-data/blob/hipster.png;image/png;1
+2;Любов і голуби;Прекрасний вибір для нареченої;900;../fake-data/blob/hipster.png;image/png;1
+3;Гострі хризантеми;Для розкішних похорон;800;../fake-data/blob/hipster.png;image/png;2
+4;Підсніжники зі шкільної клумби;Скромно і дешево;75;../fake-data/blob/hipster.png;image/png;2
+5;Жіночий каприз;Іменниниця буде здивована;650;../fake-data/blob/hipster.png;image/png;3
+6;Весняний пафос;Гламурно і елегантно;1200;../fake-data/blob/hipster.png;image/png;3
+7;Амурний тужур;Букет вистрілить не гірше стріли Амура;1500;../fake-data/blob/hipster.png;image/png;4
+8;Венера;Після такого букета вам точно не відмовлять;3000;../fake-data/blob/hipster.png;image/png;4
+9;Ромашки для Наташки;Набір часів СРСР;400;../fake-data/blob/hipster.png;image/png;5
+10;Вісьмірочка;Просто і вишукано;500;../fake-data/blob/hipster.png;image/png;5
