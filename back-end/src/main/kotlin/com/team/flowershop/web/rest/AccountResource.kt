@@ -35,7 +35,21 @@ import org.springframework.web.bind.annotation.*
 class AccountResource(
     private val userRepository: UserRepository,
     private val userService: UserService,
-    private val mailService: MailService
+    private val mailService: MailService,
+    // custom
+    private val cartRepository: CartRepository,
+    private val orderRepository: OrderRepository,
+    private val deliveryRepository: DeliveryRepository,
+    private val flowerRepository: FlowerRepository,
+    private val collectionRepository: CollectionRepository,
+    private val packingRepository: PackingRepository,
+    private val colourRepository: ColourRepository,
+    private val clientCardRepository: ClientCardRepository,
+    // composites
+    private val collectionInCartRepository: CollectionInCartRepository,
+    private val collectionInOrderRepository: CollectionInOrderRepository,
+    private val flowerInCartRepository: FlowerInCartRepository,
+    private val flowerInOrderRepository: FlowerInOrderRepository
 ) {
 
     internal class AccountResourceException(message: String) : RuntimeException(message)
@@ -68,7 +82,195 @@ class AccountResource(
             )
     }
 
+    class FlowerToCartDTO(val amount: Int, val colourId: Long)
+
+    class CollectionToCartDTO(val amount: Int, val packingId: Long)
+
+    class FromCartToOrderDTO(val packingId: Long, val address: String? = null, val postOfficeNumber: Int? = null, val deliveryType: DeliveryType)
+
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /** ############################################### */
+
+    @PostMapping("/order")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    fun makeOrder(@RequestBody dto: FromCartToOrderDTO) {
+        val user = userService.getUserWithAuthorities().get()
+        val userCard = user.clientCard!!
+        val cart = user.cart!!
+
+        // order details
+        val packaging = packingRepository.findById(dto.packingId).get()
+        val order = orderRepository.save(Order(totalPrice = cart.finalPrice!! + packaging.price!!,
+        date = Instant.now(), user = user, packing = packaging))
+
+        for (flower in cart.flowerDetails) {
+            flowerInOrderRepository.save(FlowerInOrder(amount = flower.amount,
+            colour = flower.colour, flower = flower.flower, order = order))
+        }
+
+        for (collection in cart.collectionDetails) {
+            collectionInOrderRepository.save(CollectionInOrder(amount = collection.amount,
+            collection = collection.collection, packing = collection.packing, order = order))
+        }
+
+        // delivery details
+        val deliveryType = dto.deliveryType
+        val address = if (deliveryType == DeliveryType.SELF_PICK_UP) {
+            "м.Львів, вул. Політехнічна, 4"
+        } else {
+            dto.address
+        }
+        val postOfficeNumber = if (deliveryType == DeliveryType.POST_OFFICE) {
+            dto.postOfficeNumber
+        } else {
+            null
+        }
+        var priceForDelivery = when (deliveryType) {
+            DeliveryType.SELF_PICK_UP -> {
+                0.0
+            }
+            DeliveryType.POST_OFFICE -> {
+                40.0
+            }
+            else -> {
+                60.0
+            }
+        }
+        if (userCard.type == CardType.GOLD) {
+            priceForDelivery = 0.0
+        }
+        val delivery = deliveryRepository.save(Delivery(address = address, postOfficeNumber = postOfficeNumber,
+            price = priceForDelivery, type = deliveryType, order = order, user = user))
+
+        // add bonuses and check if new card could be given
+        if (userCard.type == CardType.BONUS && user.orders.size > 2) {
+            userCard.type = CardType.SOCIAL
+            userCard.percentage = 5.0
+            userCard.description = "Картка видана за три успішні замовлення"
+        } else if (userCard.type == CardType.SOCIAL && user.orders.size > 4) {
+            userCard.type = CardType.GOLD
+            userCard.percentage = 7.0
+            userCard.description = "Картка видана за п'ять успішних замовлень"
+        }
+        userCard.bonusAmount = order.totalPrice!! / 10
+        clientCardRepository.save(userCard)
+
+        // clear the cart
+        collectionInCartRepository.deleteAll(cart.collectionDetails)
+        flowerInCartRepository.deleteAll(cart.flowerDetails)
+
+        cart.totalPriceWithoutDiscount = 0.0
+        cart.cardDiscount = 0.0
+        cart.bonusDiscount = 0.0
+        cart.finalPrice = 0.0
+        cartRepository.save(cart)
+
+        mailService.sendOrderMail(user, order, delivery)
+    }
+
+    @PostMapping("/flowers/{flowerId}/cart")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    fun addFlowerToCart(@PathVariable flowerId: Long, @RequestBody dto: FlowerToCartDTO) {
+        val user = userService.getUserWithAuthorities().get()
+        val cart = user.cart!!
+        val userCard = user.clientCard!!
+
+        val flower = flowerRepository.findById(flowerId).get()
+        val colour = colourRepository.findById(dto.colourId).get()
+
+        val flowerInCart = flowerInCartRepository.save(FlowerInCart(amount = dto.amount, colour = colour, flower = flower, cart = cart))
+
+        cart.flowerDetails.add(flowerInCart)
+        cart.totalPriceWithoutDiscount = cart.totalPriceWithoutDiscount!! + dto.amount * flower.price!!
+        if (userCard.type != CardType.BONUS) {
+            cart.cardDiscount = cart.totalPriceWithoutDiscount!! * userCard.percentage!! / 100
+        }
+        cart.bonusDiscount = userCard.bonusAmount
+        cart.finalPrice = cart.totalPriceWithoutDiscount!! - cart.cardDiscount!! - cart.bonusDiscount!!
+        cartRepository.save(cart)
+    }
+
+    @DeleteMapping("/flowers/{flowerInCartId}/cart")
+    @Transactional
+    fun removeFlowerFromCart(@PathVariable flowerInCartId: Long) {
+        val user = userService.getUserWithAuthorities().get()
+        val cart = user.cart!!
+        val userCard = user.clientCard!!
+
+        val flowerInCart = flowerInCartRepository.findById(flowerInCartId).get()
+
+        cart.totalPriceWithoutDiscount = cart.totalPriceWithoutDiscount!! - flowerInCart.amount!! * flowerInCart.flower?.price!!
+        if (userCard.type != CardType.BONUS) {
+            cart.cardDiscount = cart.totalPriceWithoutDiscount!! * userCard.percentage!! / 100
+        }
+        cart.bonusDiscount = userCard.bonusAmount
+        cart.finalPrice = cart.totalPriceWithoutDiscount!! - cart.cardDiscount!! - cart.bonusDiscount!!
+        cartRepository.save(cart)
+
+        flowerInCartRepository.delete(flowerInCart)
+    }
+
+    @PostMapping("/collections/{collectionId}/cart")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
+    fun addCollectionToCart(@PathVariable collectionId: Long, @RequestBody dto: CollectionToCartDTO) {
+        val user = userService.getUserWithAuthorities().get()
+        val cart = user.cart!!
+        val userCard = user.clientCard!!
+
+        val collection = collectionRepository.findById(collectionId).get()
+        val packing = packingRepository.findById(dto.packingId).get()
+
+        val collectionInCart = collectionInCartRepository.save(CollectionInCart(amount = dto.amount, collection = collection, packing = packing, cart = cart))
+
+        cart.collectionDetails.add(collectionInCart)
+        cart.totalPriceWithoutDiscount = cart.totalPriceWithoutDiscount!! + dto.amount * collection.price!! + packing.price!!
+        if (userCard.type != CardType.BONUS) {
+            cart.cardDiscount = cart.totalPriceWithoutDiscount!! * userCard.percentage!! / 100
+        }
+        cart.bonusDiscount = userCard.bonusAmount
+        cart.finalPrice = cart.totalPriceWithoutDiscount!! - cart.cardDiscount!! - cart.bonusDiscount!!
+        cartRepository.save(cart)
+    }
+
+    @DeleteMapping("/collections/{collectionInCartId}/cart")
+    @Transactional
+    fun removeCollectionFromCart(@PathVariable collectionInCartId: Long) {
+        val user = userService.getUserWithAuthorities().get()
+        val cart = user.cart!!
+        val userCard = user.clientCard!!
+
+        val collectionInCart = collectionInCartRepository.findById(collectionInCartId).get()
+
+        cart.totalPriceWithoutDiscount = cart.totalPriceWithoutDiscount!! - collectionInCart.amount!! * collectionInCart.collection?.price!! - collectionInCart.packing?.price!!
+        if (userCard.type != CardType.BONUS) {
+            cart.cardDiscount = cart.totalPriceWithoutDiscount!! * userCard.percentage!! / 100
+        }
+        cart.bonusDiscount = userCard.bonusAmount
+        cart.finalPrice = cart.totalPriceWithoutDiscount!! - cart.cardDiscount!! - cart.bonusDiscount!!
+        cartRepository.save(cart)
+
+        collectionInCartRepository.delete(collectionInCart)
+    }
+
+    @GetMapping("/account/orders")
+    @Transactional
+    fun getAccountOrders(): Set<Order> =
+        userService.getUserWithAuthorities()
+            .map { it.orders }
+            .orElseThrow { AccountResourceException("User could not be found") }
+
+    @GetMapping("/account/deliveries")
+    @Transactional
+    fun getAccountDeliveries(): Set<Delivery> =
+        userService.getUserWithAuthorities()
+            .map { it.deliveries }
+            .orElseThrow { AccountResourceException("User could not be found") }
+
+    /** ############################################### */
 
     /**
      * `POST  /register` : register the user.
