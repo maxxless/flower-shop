@@ -156,7 +156,7 @@ class PackingResource(
     @GetMapping("/_search/packings")
     fun searchPackings(@RequestParam query: String, pageable: Pageable): ResponseEntity<MutableList<Packing>> {
         log.debug("REST request to search for a page of Packings for query {}", query)
-        val page = packingService.search(query, pageable)
+        val page = packingService.search("$query*", pageable)
         val headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page)
         return ResponseEntity.ok().headers(headers).body(page.content)
     }

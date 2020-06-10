@@ -156,7 +156,7 @@ class CollectionResource(
     @GetMapping("/_search/collections")
     fun searchCollections(@RequestParam query: String, pageable: Pageable): ResponseEntity<MutableList<Collection>> {
         log.debug("REST request to search for a page of Collections for query {}", query)
-        val page = collectionService.search(query, pageable)
+        val page = collectionService.search("$query*", pageable)
         val headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page)
         return ResponseEntity.ok().headers(headers).body(page.content)
     }

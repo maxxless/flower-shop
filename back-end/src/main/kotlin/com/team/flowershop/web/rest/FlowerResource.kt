@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 
 private const val ENTITY_NAME = "flower"
+
 /**
  * REST controller for managing [com.team.flowershop.domain.Flower].
  */
@@ -38,6 +39,7 @@ class FlowerResource(
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+
     @Value("\${jhipster.clientApp.name}")
     private var applicationName: String? = null
 
@@ -83,11 +85,12 @@ class FlowerResource(
             .headers(
                 HeaderUtil.createEntityUpdateAlert(
                     applicationName, false, ENTITY_NAME,
-                     flower.id.toString()
+                    flower.id.toString()
                 )
             )
             .body(result)
     }
+
     /**
      * `GET  /flowers` : get all the flowers.
      *
@@ -96,7 +99,8 @@ class FlowerResource(
      * @param criteria the criteria which the requested entities should match.
      * @return the [ResponseEntity] with status `200 (OK)` and the list of flowers in body.
      */
-    @GetMapping("/flowers") fun getAllFlowers(
+    @GetMapping("/flowers")
+    fun getAllFlowers(
         criteria: FlowerCriteria,
         pageable: Pageable
 
@@ -131,6 +135,7 @@ class FlowerResource(
         val flower = flowerService.findOne(id)
         return ResponseUtil.wrapOrNotFound(flower)
     }
+
     /**
      *  `DELETE  /flowers/:id` : delete the "id" flower.
      *
@@ -156,7 +161,7 @@ class FlowerResource(
     @GetMapping("/_search/flowers")
     fun searchFlowers(@RequestParam query: String, pageable: Pageable): ResponseEntity<MutableList<Flower>> {
         log.debug("REST request to search for a page of Flowers for query {}", query)
-        val page = flowerService.search(query, pageable)
+        val page = flowerService.search("$query*", pageable)
         val headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page)
         return ResponseEntity.ok().headers(headers).body(page.content)
     }
