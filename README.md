@@ -39,8 +39,6 @@ To benefit from TypeScript type definitions from [DefinitelyTyped][] repository 
 Then you would import the JS and CSS files specified in library's installation instructions so that [Webpack][] knows about them:
 Note: There are still a few other things remaining to do for Leaflet that we won't detail here.
 
-For further instructions on how to develop with JHipster, have a look at [Using JHipster in development][].
-
 ## Testing
 
 To launch your application's tests, run:
